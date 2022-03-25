@@ -18,7 +18,7 @@ class FeedyAPI {
     public function __construct(
         protected string $token
     ){
-        $this->client = HttpClient::createForBaseUri("https://feedy.levkopo.ru/api");
+        $this->client = HttpClient::createForBaseUri("https://api.zation.ru");
     }
 
     /**
@@ -28,7 +28,7 @@ class FeedyAPI {
         $params = ["fields"=>$fields];
         if($user_id==0) $params['user_id'] = $user_id;
 
-        return $this->request("user/get", $params);
+        return $this->request("user", $params);
     }
 
     /**
@@ -81,10 +81,11 @@ class FeedyAPI {
     /**
      * @throws TransportExceptionInterface
      */
-    public function createPost(string $text = "", string $attachment = "", string $thread = ""): array|false {
+    public function createPost(string $text = "", string $attachment = "", string $thread = ""): bool {
         return $this->request("feed/post", [
             "text" => $text,
-            "attachment" => $attachment,
+            "attachments" => $attachment,
+            "thread" => $thread
         ], "PUT");
     }
 
@@ -130,7 +131,7 @@ class FeedyAPI {
                     return $this->request("attachments/save/photo", [
                         "photo" => $data["photo"],
                         "hash" => $data["hash"]
-                    ]);
+                    ], "PUT");
                 } catch (ClientExceptionInterface | RedirectionExceptionInterface
                 | ServerExceptionInterface | TransportExceptionInterface) {}
             }
@@ -145,15 +146,17 @@ class FeedyAPI {
      * @throws TransportExceptionInterface
      */
     public function request(string $method, array $params = [],
-                            string $requestMethod = "GET"): array|false {
+                            string $requestMethod = "GET") {
         $params["access_token"] = $this->token;
         $response = $this->client->request($requestMethod, $method."?".http_build_query($params));
-        if($response->getStatusCode()!=200) return false;
+        if($response->getStatusCode()!=200) {
+            return false;
+        }
 
         try {
-            return json_decode($response->getContent(false), true)['response'];
+            return json_decode($response->getContent(true), true)['response'];
         } catch (ClientExceptionInterface | RedirectionExceptionInterface
-                | ServerExceptionInterface | TransportExceptionInterface) {
+                | ServerExceptionInterface | TransportExceptionInterface $e) {
             return false;
         }
     }
